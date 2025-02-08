@@ -1,0 +1,190 @@
+#! /bin/bash
+#
+# etcal v1.1
+# Script to display Ethiopian Calendar
+# Usage etcal [Year] [Month]
+# Author th3snk@yahoo.com
+#
+usage()
+{
+  echo "$message"
+  echo "Usage $0 [Year] [Month]"
+  echo "For example $0"
+  echo "            $0 1888"
+  echo "            $0 1888 6"
+  exit 1
+  return
+}
+
+today()
+{
+  gyear=`date +%Y`	#Gregorian Year
+  gmonth=`date +%-m`	#Gregorian Month
+  gday=`date +%-d`	#Gregorian day
+  lastYear=`expr $gyear - 7`  #lastYear=gyear-8 but to check leap (year+1)%4
+  if [ $gmonth -lt 9 ]; then
+    tyear=`expr $gyear - 8`
+  elif [ $gmonth -gt 9 ]; then
+    tyear=`expr $gyear - 7`
+  else
+    if [ $gday -lt 11 ]; then
+      tyear=`expr $gyear - 8`
+    elif [ $gday -eq 11 -a `expr $lastYear % 4` -eq 0 ]; then
+      tyear=`expr $gyear - 8`
+    else
+      tyear=`expr $gyear - 7`
+    fi
+  fi
+
+  isLeapYear=`expr $tyear + 1`
+  isLeapYear=`expr $isLeapYear % 4`
+
+  #check if the year before is leap (tyear-1+1)%4
+  start=11	#this year started on september 11
+  if [ `expr $tyear % 4` -eq 0 ]; then
+    start=12
+  fi
+  total=`expr 31 - $start`        #days left in september
+#echo "grToday: $gyear $gmonth $gday"
+
+  nstart=$start	#next year starts on september 11 or 12
+  if [ `expr $lastYear % 4` -eq 0 -a $isLeapYear -eq 0 ]; then	#for pagume which has 6 days on Leap Year
+    nstart=12
+  fi
+  if [ $gmonth -eq 9 -a $gday -ge $nstart ]; then
+    tmonth=1
+    tday=`expr $gday - $start + 1`
+  else
+    for i in 10 11 12 1 2 3 4 5 6 7 8 9
+    do
+      if [ $i -eq $gmonth ]; then
+        total=`expr $total + $gday`
+        tmonth=`expr $total / 30`
+	tmonth=`expr $tmonth + 1`
+        tday=`expr $total % 30`
+        if [ $tday -eq 0 ]; then
+          tmonth=`expr $tmonth - 1`
+          tday=30
+        fi
+	break #break from the loop
+      else
+        if [ $i -eq 4 -o $i -eq 6 -o $i -eq 9 -o $i -eq 11 ]; then
+          total=`expr $total + 30`
+        elif [ $i -eq 2 ]; then
+          if [ `expr $gyear % 4` -ne 0 -o `expr $gyear % 100` -eq 0 -a `expr $gyear % 400` -ne 0 ]; then
+            total=`expr $total + 28`
+          else
+            total=`expr $total + 29`
+          fi
+        else
+          total=`expr $total + 31`
+        fi
+      fi
+    done
+  fi
+  return
+}
+
+getMonthName()
+{
+  case $month in
+    1)  monthName="መ ስከረም ";;
+    2)  monthName="ጥ ቅ ም ት";;
+    3)  monthName="ሕ ዳ ር";;
+    4)  monthName="ታ ሕ ሣ ስ";;
+    5)  monthName="ጥ ር";;
+    6)  monthName="የካቲት";;
+    7)  monthName="መ ጋቢት";;
+    8)  monthName="ሚ ያዚያ";;
+    9)  monthName="ግንቦት";;
+    10) monthName="ሰኔ";;
+    11) monthName="ሐ ም ሌ";;
+    12) monthName="ነሐ ሴ";;
+    13) monthName="ጳጉሜ";;
+  esac
+  return
+}
+
+today	#first calculate today
+#echo "etToday: $tyear $tmonth $tday "
+if [ $# -gt 2 ]; then
+  message=""
+  usage
+elif [ $# -gt 0 ]; then	#if only year is given as an argument
+  year=$1
+  isLeapYear=`expr $year + 1`
+  isLeapYear=`expr $isLeapYear % 4`
+  if [ $year -le 0 ]; then
+    message="Year should be a positive number"
+    usage
+  elif [ $# -gt 1 ]; then	#if year and month is given as an argument
+    month=$2
+    if [ $month -lt 1 -o $month -gt 13 ]; then
+      message="Month should be from 1 to 13"
+      usage
+    fi
+  else	#if no month print the whole year start with month=1
+    month=1
+    day=0
+  fi
+else
+  year=$tyear
+  month=$tmonth
+  day=$tday
+fi
+#echo "etDate: $year $month $day "
+
+newYear=`expr 5 \* $year / 4 + 2`   #starting date of the year assuming sun=0, mon=1 ... sat=6
+newYear=`expr $newYear % 7`
+
+#start printing to stdout
+noOfMonths=1
+if [ $# -eq 1 ]; then	#if only year is given as argument
+  echo -e "\033[1m       $year"
+  noOfMonths=13
+fi
+for (( j=0; j<noOfMonths; j++ ))
+do
+  monthStart=`expr 2 \* $month - 2`
+  monthStart=`expr $newYear + $monthStart`    #starting date of the month assuming sun=0, mon=1 ... sat=6
+  monthStart=`expr $monthStart % 7`
+
+  getMonthName
+  if [ $noOfMonths -eq 13 ]; then
+    echo -e "\033[1m     $monthName"
+  else
+    echo -e "\033[1m     $monthName $year"
+  fi
+  echo " እ  ሰ  ማ  ረ  ኀ  አ  ቅ"
+  for (( i = 0; i < $monthStart; i++ ))
+  do
+    echo -n "   "
+  done
+  noOfDays=30
+  if [ $month -eq 13 -a $isLeapYear -eq 0 ]; then
+    noOfDays=6
+  elif [ $month -eq 13 -a $isLeapYear -ne 0 ]; then
+    noOfDays=5
+  fi
+  for (( i = 1; i <= $noOfDays; i++ ))
+  do
+    if [ $i -eq $tday -a $year -eq $tyear -a $month -eq $tmonth ]; then	#mark today by changing the bg color
+      echo -e -n "\033[42m"
+    fi
+    if [ $i -gt 9 ]; then
+      echo -n "$i"
+    else
+      echo -n " $i"
+    fi
+    if [ $i -eq $tday -a $year -eq $tyear -a $month -eq $tmonth ]; then	#set back background color to black
+      echo -e -n "\033[00m"
+    fi
+    echo -n " "	#separetor b/n days
+    weekEnd=`expr $i + $monthStart`
+    if [ `expr $weekEnd % 7` -eq 0 ]; then	#end of a week
+      echo "" #print new line
+    fi
+  done
+  month=`expr $month + 1`
+  echo ""       #print new line
+done
